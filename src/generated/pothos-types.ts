@@ -1,5 +1,5 @@
 /* eslint-disable */
-import type { Prisma, User, Post, Category, TypeTest } from "C:\\prog\\test\\cloudflare\\cloudflare-graphql\\node_modules\\@prisma\\client";
+import type { Prisma, User, Post, Category } from "C:\\prog\\test\\cloudflare\\cloudflare-graphql\\node_modules\\@prisma\\client";
 export default interface PrismaTypes {
     User: {
         Name: "User";
@@ -65,19 +65,5 @@ export default interface PrismaTypes {
                 Nullable: false;
             };
         };
-    };
-    TypeTest: {
-        Name: "TypeTest";
-        Shape: TypeTest;
-        Include: never;
-        Select: Prisma.TypeTestSelect;
-        OrderBy: Prisma.TypeTestOrderByWithRelationInput;
-        WhereUnique: Prisma.TypeTestWhereUniqueInput;
-        Where: Prisma.TypeTestWhereInput;
-        Create: {};
-        Update: {};
-        RelationName: never;
-        ListRelations: never;
-        Relations: {};
     };
 }

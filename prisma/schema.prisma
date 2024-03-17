@@ -3,16 +3,17 @@ generator client {
   previewFeatures = ["driverAdapters"]
 }
 
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-}
-
 generator pothos {
   provider = "prisma-pothos-types"
   output   = "../src/generated/pothos-types.ts"
 }
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// @pothos-generator executable {include:["mutation"],authority:["ADMIN"]}
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -23,6 +24,12 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+/// @pothos-generator executable {include:["mutation"],authority:["USER"]}
+/// @pothos-generator input-data {data:{authorId:"%%USER%%"}}
+/// @pothos-generator where {include:["query"],where:{},authority:["USER"]}
+/// @pothos-generator where {include:["query"],where:{published:true}}
+/// @pothos-generator where {include:["update","delete"],where:{authorId:"%%USER%%"}}
+/// @pothos-generator order {orderBy:{title:"asc"}}
 model Post {
   id          String     @id @default(uuid())
   published   Boolean    @default(false)
@@ -36,9 +43,11 @@ model Post {
   publishedAt DateTime   @default(now())
 }
 
+/// @pothos-generator executable {include:["mutation"],authority:["USER"]}
+/// @pothos-generator order {orderBy:{name:"asc"}}
 model Category {
   id        String   @id @default(uuid())
-  name      String   @unique
+  name      String
   posts     Post[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -47,11 +56,4 @@ model Category {
 enum Role {
   ADMIN
   USER
-}
-
-// This model is only here to test the scalar list functionality
-model TypeTest {
-  id         String   @id @default(uuid())
-  scalarList String[]
-  role       Role
 }

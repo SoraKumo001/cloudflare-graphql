@@ -15,6 +15,9 @@ export const explorer = (schema: GraphQLSchema) => {
 				target: '#embeddableExplorer',
 				endpointUrl: '/graphql',
 				schema: getExampleSchema(),
+				handleRequest:(url, option) =>
+          fetch(url, { ...option, credentials: "same-origin" })
+        ,
 			});
 		</script>
   </html>
