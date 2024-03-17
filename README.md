@@ -5,6 +5,9 @@ https://cloudflare-graphql.mofon001.workers.dev/
 ## Required Environment Variables
 
 - DATABASE_URL
+  - PostgreSQL URL
+- SECRET
+  - Secret for JWT
 
 ## Sample code
 

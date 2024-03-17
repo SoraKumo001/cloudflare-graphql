@@ -12,19 +12,32 @@ import { SignJWT, jwtVerify } from 'jose';
 import { Pool } from '@prisma/pg-worker';
 import { PrismaPg } from '@prisma/adapter-pg-worker';
 
+/**
+ * @type {Env}
+ * @description Cloudflare Environment variables
+ */
 type Env = {
 	DATABASE_URL: string;
+	SECRET: string;
 };
 
+/**
+ * @type {Context}
+ * @description Context for the GraphQL server
+ */
 type Context = {
-	request: Request;
 	env: Env;
+	request: Request;
 	responseCookies: string[];
 	setCookie: typeof serialize;
 	cookies: { [key: string]: string };
 	user?: User;
 };
 
+/**
+ * @type {ExecutionContext}
+ * @description Type definition for Pothos
+ */
 type BuilderType = {
 	PrismaTypes: PrismaTypes;
 	Scalars: {
@@ -36,33 +49,32 @@ type BuilderType = {
 	Context: Context;
 };
 
-const secret = 'secret';
-
 export const createBuilder = (prisma: PrismaClient) => {
 	const builder = new SchemaBuilder<BuilderType>({
 		plugins: [PrismaPlugin, PrismaUtils, PothosPrismaGeneratorPlugin],
 		prisma: {
 			client: prisma,
 		},
+		// authorization settings
 		pothosPrismaGenerator: {
-			authority: ({ context }) => (context.user ? ['USER'] : []),
+			authority: ({ context }) => context.user?.roles ?? [],
 			replace: { '%%USER%%': ({ context }) => context.user?.id },
 		},
 	});
 	return builder;
 };
 
-const customSchema = ({ builder }: { builder: ReturnType<typeof createBuilder> }) => {
+const customSchema = ({ builder, env }: { builder: ReturnType<typeof createBuilder>; env: Env }) => {
+	// Add signIn mutation
 	builder.mutationType({
 		fields: (t) => ({
 			signIn: t.prismaField({
-				args: { email: t.arg({ type: 'String', required: true }) },
+				args: { email: t.arg({ type: 'String' }) },
 				type: 'User',
 				nullable: true,
 				resolve: async (_query, _root, { email }, { setCookie }) => {
 					const prisma = builder.options.prisma.client as PrismaClient;
-					const user = await prisma.user.findUnique({ where: { email: email } });
-
+					const user = email && (await prisma.user.findUnique({ where: { email: email } }));
 					if (!user) {
 						setCookie('auth-token', '', {
 							httpOnly: true,
@@ -71,9 +83,8 @@ const customSchema = ({ builder }: { builder: ReturnType<typeof createBuilder> }
 							maxAge: 0,
 							domain: undefined,
 						});
-						return null;
-					}
-					if (user) {
+					} else {
+						const secret = env.SECRET;
 						if (!secret) throw new Error('SECRET_KEY is not defined');
 						const token = await new SignJWT({ user: user }).setProtectedHeader({ alg: 'HS256' }).sign(new TextEncoder().encode(secret));
 						setCookie('auth-token', token, {
@@ -84,7 +95,7 @@ const customSchema = ({ builder }: { builder: ReturnType<typeof createBuilder> }
 							domain: undefined,
 						});
 					}
-					return user;
+					return user || null;
 				},
 			}),
 		}),
@@ -107,15 +118,17 @@ const schema = () => {
 		});
 		const prisma = new PrismaClient({ adapter });
 		if (schema && builder) {
+			// Update the prisma client
 			builder.options.prisma.client = prisma;
 			return schema;
 		}
+		// Create a new schema
 		builder = createBuilder(prisma);
 		const Upload = new GraphQLScalarType({
 			name: 'Upload',
 		});
 		builder.addScalarType('Upload', Upload, {});
-		customSchema({ builder });
+		customSchema({ builder, env });
 		schema = builder.toSchema();
 		return schema;
 	};
@@ -124,7 +137,6 @@ const schema = () => {
 
 const yoga = createYoga<Context>({
 	schema: schema(),
-
 	fetchAPI: { Response },
 });
 
@@ -137,17 +149,21 @@ export default {
 					headers: { 'content-type': 'text/html' },
 				});
 			case '/graphql':
+				// Get the user from the token
+				const cookies = parse(request.headers.get('Cookie') || '');
+				const token = cookies['auth-token'];
+				const secret = env.SECRET;
+				const user = await jwtVerify(token, new TextEncoder().encode(secret))
+					.then((data) => data.payload.user as User)
+					.catch(() => undefined);
+				// For cookie setting
 				const responseCookies: string[] = [];
 				const setCookie: typeof serialize = (name, value, options) => {
 					const result = serialize(name, value, options);
 					responseCookies.push(result);
 					return result;
 				};
-				const cookies = parse(request.headers.get('Cookie') || '');
-				const token = cookies['auth-token'];
-				const user = await jwtVerify(token, new TextEncoder().encode(secret))
-					.then((data) => data.payload.user as User)
-					.catch(() => undefined);
+				// Executing GraphQL queries
 				const response = await yoga.handleRequest(request, {
 					request,
 					env,
@@ -156,6 +172,7 @@ export default {
 					cookies: {},
 					user,
 				});
+				// Set the cookies
 				responseCookies.forEach((v) => {
 					response.headers.append('set-cookie', v);
 				});

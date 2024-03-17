@@ -7,13 +7,13 @@
 		"dev:yoga": "wrangler dev --minify",
 		"dev:docker": "docker compose -f docker/development/docker-compose.yml up -d",
 		"dev:proxy": "prisma-accelerate-local postgresql://postgres:password@localhost:25432/postgres -p 8000 -t",
-		"development:seed": "tsx tools/seed",
+		"development:seed": "tsx prisma/seed",
 		"start": "wrangler dev",
 		"prisma:generate": "prisma generate && tsx tools/fix-prisma-datamodel",
 		"prisma:migrate": "prisma migrate dev",
 		"deploy": "wrangler deploy",
-		"production:prisma:migrate": "next-exec -c production -- prisma migrate deploy",
-		"production:seed": "next-exec -c production -- tsx tools/seed"
+		"production:prisma:migrate": "next-exec -c production -- prisma db push",
+		"production:seed": "next-exec -c production -- tsx prisma/seed"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20240314.0",
