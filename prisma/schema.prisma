@@ -10,7 +10,7 @@ datasource db {
 
 generator pothos {
   provider = "prisma-pothos-types"
-  output   = "../app/generated/pothos-types.ts"
+  output   = "../src/generated/pothos-types.ts"
 }
 
 model User {
