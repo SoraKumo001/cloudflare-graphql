@@ -1,3 +1,12 @@
+# Sample of Cloudflare Workers + Prisma handling GraphQL
+
+## Required Environment Variables
+
+- DATABASE_URL
+
+## Sample code
+
+```ts
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
@@ -84,3 +93,4 @@ export default {
 		return new Response('');
 	},
 };
+```
