@@ -1,5 +1,7 @@
 # Sample of Cloudflare Workers + Prisma handling GraphQL
 
+https://cloudflare-graphql.mofon001.workers.dev/
+
 ## Required Environment Variables
 
 - DATABASE_URL
