@@ -24,9 +24,11 @@
 		"wrangler": "^3.36.0"
 	},
 	"dependencies": {
+		"@neondatabase/serverless": "^0.9.0",
 		"@pothos/core": "^3.41.0",
 		"@pothos/plugin-prisma": "^3.65.0",
 		"@pothos/plugin-prisma-utils": "^0.14.0",
+		"@prisma/adapter-neon": "^5.11.0",
 		"@prisma/adapter-pg-worker": "^5.11.0",
 		"@prisma/client": "^5.11.0",
 		"@prisma/pg-worker": "^5.11.0",

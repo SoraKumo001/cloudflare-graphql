@@ -1,8 +1,8 @@
 name = "cloudflare-graphql"
 main = "src/index.ts"
 compatibility_date = "2024-02-23"
-node_compat = true
 minify = true
+compatibility_flags = [ "nodejs_compat" ]
 
 [placement]
 mode = "smart"
