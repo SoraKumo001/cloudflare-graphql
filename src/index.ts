@@ -2,15 +2,15 @@ import SchemaBuilder from '@pothos/core';
 import PrismaPlugin from '@pothos/plugin-prisma';
 import PrismaUtils from '@pothos/plugin-prisma-utils';
 import { PrismaClient, User } from '@prisma/client';
-import { GraphQLScalarType, GraphQLSchema } from 'graphql';
+import { GraphQLScalarType, type GraphQLSchema } from 'graphql';
 import { createYoga } from 'graphql-yoga';
 import PothosPrismaGeneratorPlugin from 'pothos-prisma-generator';
 import { explorer } from './explorer';
 import PrismaTypes from './generated/pothos-types';
-import { parse, serialize } from 'cookie';
+import { parse, serialize, type SerializeOptions, type SetCookie, type StringifyOptions } from 'cookie';
 import { SignJWT, jwtVerify } from 'jose';
-import { Pool } from '@prisma/pg-worker';
-import { PrismaPg } from '@prisma/adapter-pg-worker';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { prismaDmmf } from './generated/prisma-dmmf';
 
 /**
  * @type {Env}
@@ -29,7 +29,7 @@ type Context = {
 	env: Env;
 	request: Request;
 	responseCookies: string[];
-	setCookie: typeof serialize;
+	setCookie: (name: string, val: string, options?: SerializeOptions) => string;
 	cookies: { [key: string]: string };
 	user?: User;
 };
@@ -54,11 +54,13 @@ export const createBuilder = (prisma: PrismaClient) => {
 		plugins: [PrismaPlugin, PrismaUtils, PothosPrismaGeneratorPlugin],
 		prisma: {
 			client: prisma,
+			dmmf: prismaDmmf,
 		},
 		// authorization settings
 		pothosPrismaGenerator: {
 			authority: ({ context }) => context.user?.roles ?? [],
 			replace: { '%%USER%%': ({ context }) => context.user?.id },
+			// autoScalers: false,
 		},
 	});
 	return builder;
@@ -106,16 +108,13 @@ const schema = () => {
 	let schema: GraphQLSchema;
 	let builder: ReturnType<typeof createBuilder>;
 	const createSchema = async ({ env }: { env: Env }) => {
-		const pool = new Pool({
-			connectionString: env.DATABASE_URL,
-			max: 1,
-			idleTimeoutMillis: 0,
-			keepAlive: false,
-		});
 		const url = new URL(env.DATABASE_URL.replace(/^([^:]+):/, 'http:'));
-		const adapter = new PrismaPg(pool, {
-			schema: url.searchParams.get('schema') ?? undefined,
-		});
+		const adapter = new PrismaPg(
+			{ connectionString: env.DATABASE_URL },
+			{
+				schema: url.searchParams.get('schema') ?? undefined,
+			}
+		);
 		const prisma = new PrismaClient({ adapter });
 		if (schema && builder) {
 			// Update the prisma client
@@ -127,7 +126,7 @@ const schema = () => {
 		const Upload = new GraphQLScalarType({
 			name: 'Upload',
 		});
-		builder.addScalarType('Upload', Upload, {});
+		builder.addScalarType('Upload', Upload as never, {});
 		customSchema({ builder, env });
 		schema = builder.toSchema();
 		return schema;
@@ -151,14 +150,14 @@ export default {
 			case '/graphql':
 				// Get the user from the token
 				const cookies = parse(request.headers.get('Cookie') || '');
-				const token = cookies['auth-token'];
+				const token = cookies['auth-token'] ?? '';
 				const secret = env.SECRET;
 				const user = await jwtVerify(token, new TextEncoder().encode(secret))
 					.then((data) => data.payload.user as User)
 					.catch(() => undefined);
 				// For cookie setting
 				const responseCookies: string[] = [];
-				const setCookie: typeof serialize = (name, value, options) => {
+				const setCookie = (name: string, value: string, options?: SerializeOptions) => {
 					const result = serialize(name, value, options);
 					responseCookies.push(result);
 					return result;
